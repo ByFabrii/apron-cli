@@ -95,6 +95,26 @@ export class Api {
     return this.request<BuildInfo>("POST", "/api/v1/builds", form);
   }
 
+  // --- Actualizaciones OTA --------------------------------------------------------------------
+
+  async publishUpdate(fields: Record<string, string | undefined>, files: { path: string; file: string }[]) {
+    const form = new FormData();
+    for (const [key, value] of Object.entries(fields)) if (value) form.append(key, value);
+    form.append("paths", JSON.stringify(files.map((f) => f.path)));
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]!;
+      const blob = typeof Bun !== "undefined" ? Bun.file(f.file) : await openAsBlob(f.file);
+      form.append(`f${i}`, blob, `f${i}`);
+    }
+    return this.request<{ groupId: string; channel: string; runtimeVersion: string; platforms: string[]; newBytes: number; url: string; manifestUrl: string }>(
+      "POST", "/api/v1/ota/updates", form);
+  }
+
+  listUpdates() {
+    return this.request<{ groupId: string; channel: string; runtimeVersion: string; platforms: string[]; message?: string; createdAt: string; rolledBackAt?: string; sizeBytes: number }[]>(
+      "GET", "/api/v1/ota/updates");
+  }
+
   // --- Login con el navegador (no lleva llave) ----------------------------------------------
 
   loginStart(client: string, project?: string) {

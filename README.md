@@ -24,7 +24,26 @@ hangar upload app.apk --profile preview
 hangar list
 hangar share latest --profile preview --hours 24   # enlace + QR en la terminal
 hangar open | hangar doctor | hangar whoami | hangar logout
+hangar update --channel preview --message "Arreglo"  # actualización OTA (Expo)
+hangar updates                                       # últimas actualizaciones OTA
 ```
+
+### Actualizaciones OTA (Expo)
+
+Mandan JavaScript y assets nuevos a las apps ya instaladas, sin compilar otro APK. Una vez, en `app.json`
+(dentro de `"expo"`), y compilar un APK nuevo con `expo-updates` instalado:
+
+```json
+"runtimeVersion": { "policy": "appVersion" },
+"updates": {
+  "url": "https://hangar.fabrizziodev.com/ota/<proyecto>/manifest",
+  "requestHeaders": { "expo-channel-name": "preview" }
+}
+```
+
+Después, cada cambio de JS: `hangar update --channel preview`. Las apps de ese canal con el mismo runtime
+(la versión de la app) lo bajan la próxima vez que abren. Si cambias código nativo, dependencias nativas o la
+versión, compila otro APK. Revertir: desde el panel (sección Actualizaciones OTA del proyecto).
 
 ### hangar.json
 

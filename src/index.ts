@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Hangar CLI: compila y sube builds de cualquier proyecto a tu panel Hangar.
 import * as cmd from "./commands";
+import * as ota from "./ota";
 import { c, CliError } from "./ui";
 import { VERSION } from "./version";
 
@@ -13,6 +14,8 @@ ${c.bold("Uso")}
   hangar upload <archivo>        Sube un archivo ya compilado
   hangar list                    Últimos builds del proyecto
   hangar share [id|latest]       Enlace para compartir (con QR) del build
+  hangar update                  Publica una actualización OTA (Expo): JS nuevo sin otro APK
+  hangar updates                 Últimas actualizaciones OTA
   hangar open [settings|latest]  Abre el proyecto en el panel
   hangar whoami                  A qué proyecto sube esta terminal
   hangar doctor                  Revisa que todo esté listo
@@ -29,6 +32,10 @@ ${c.bold("Opciones")}
   --skip-build         build: no compilar, subir el último archivo existente
   --hours <n>          share: horas que dura el enlace (1 a 720)
   --no-qr              share: sin QR
+  --channel <c>        update: canal de la app (preview, production…). Por omisión: production
+  --message "<texto>"  update: descripción (por omisión, el último commit)
+  --platform <p>       update: android, ios o all (por omisión)
+  --runtime-version <v> update: si app.json no usa la política appVersion
   --server <url>       init/login: URL del panel
   --project <slug>     init/login: identificador del proyecto
 
@@ -63,7 +70,7 @@ function parse(argv: string[]): { command?: string; args: string[]; flags: cmd.F
 }
 
 function takesValue(name: string): boolean {
-  return ["profile", "notes", "version", "version-code", "hours", "server", "project", "platform", "limit"].includes(name);
+  return ["profile", "notes", "version", "version-code", "hours", "server", "project", "platform", "limit", "channel", "message", "runtime-version"].includes(name);
 }
 
 async function main() {
@@ -79,6 +86,8 @@ async function main() {
     case "upload": return cmd.upload(args, flags);
     case "list": case "ls": return cmd.list(flags);
     case "share": return cmd.share(args, flags);
+    case "update": return ota.update(flags);
+    case "updates": return ota.updates();
     case "open": return cmd.open(args, flags);
     case "doctor": return cmd.doctor();
     case "config": return cmd.config(args);
