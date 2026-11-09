@@ -1,10 +1,10 @@
-// Variables de entorno con las que corre `hangar build`.
+// Variables de entorno con las que corre `apron build`.
 //
-// Con "eas": "<perfil>" en hangar.json, el build local se comporta como uno de EAS:
+// Con "eas": "<perfil>" en apron.json, el build local se comporta como uno de EAS:
 // - toma las variables "env" de ese perfil de eas.json, siguiendo "extends" como EAS;
 // - no carga .env (EAS no lo sube: está en .gitignore);
 // - no pregunta por cambios sin commit en git (expo prebuild se quedaría esperando).
-// "env" en hangar.json se suma al final y gana sobre todo lo anterior.
+// "env" en apron.json se suma al final y gana sobre todo lo anterior.
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -48,7 +48,7 @@ export function easProfileEnv(root: string, name: string): Record<string, string
 
 export interface BuildEnv {
   env: NodeJS.ProcessEnv;
-  /** Nombres de las variables que agregó Hangar (sin valores: pueden ser secretos) */
+  /** Nombres de las variables que agregó Apron (sin valores: pueden ser secretos) */
   added: string[];
 }
 
@@ -57,7 +57,7 @@ export function buildEnv(root: string, profile: ProfileConfig, fail: (msg: strin
   const extra: Record<string, string> = {};
   if (profile.eas) {
     const fromEas = easProfileEnv(root, profile.eas);
-    if (!fromEas) fail(`El perfil "${profile.eas}" no está en eas.json.`, `Revisa "eas" del perfil en hangar.json.`);
+    if (!fromEas) fail(`El perfil "${profile.eas}" no está en eas.json.`, `Revisa "eas" del perfil en apron.json.`);
     Object.assign(extra, EAS_LIKE, fromEas);
   }
   Object.assign(extra, profile.env ?? {});

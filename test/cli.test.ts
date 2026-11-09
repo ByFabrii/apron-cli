@@ -13,10 +13,9 @@ let dir: string;
 const env = { ...process.env };
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "hangar-cli-"));
-  process.env.HANGAR_CONFIG = join(dir, "config", "config.json");
-  delete process.env.HANGAR_TOKEN;
-  delete process.env.HANGAR_URL;
+  dir = mkdtempSync(join(tmpdir(), "apron-cli-"));
+  process.env.APRON_CONFIG = join(dir, "config", "config.json");
+  for (const name of ["APRON_TOKEN", "APRON_URL", "HANGAR_TOKEN", "HANGAR_URL", "HANGAR_CONFIG"]) delete process.env[name];
 });
 
 afterEach(() => {
@@ -129,7 +128,7 @@ describe("variables del build", () => {
     expect(easProfileEnv(dir, "no-existe")).toBeUndefined();
   });
 
-  test("con eas: sin .env, sin aviso de git y env de hangar.json al final", () => {
+  test("con eas: sin .env, sin aviso de git y env de apron.json al final", () => {
     file("eas.json", JSON.stringify(eas));
     process.env.EXPO_PUBLIC_MODE = "demo"; // como si viniera de la terminal
     const { env: out, added } = buildEnv(dir, { eas: "preview", env: { EXPO_PUBLIC_API: "https://local" } }, noFail);
@@ -148,27 +147,44 @@ describe("variables del build", () => {
 });
 
 describe("de dónde sale la llave", () => {
-  test("hangar login > .hangar.env, y HANGAR_TOKEN gana a todo", () => {
+  test("apron login > .apron.env, y APRON_TOKEN gana a todo", () => {
+    file("apron.json", JSON.stringify({ server: "https://panel.test/", project: "mi-app", profiles: {} }));
+    file(".apron.env", "APRON_URL=https://panel.test\nAPRON_TOKEN=apr_del_archivo\n");
+    const project = findProject(dir)!;
+    expect(resolveAuth(project)).toMatchObject({ server: "https://panel.test", token: "apr_del_archivo", source: ".apron.env" });
+
+    saveCredential("https://panel.test", "mi-app", { token: "apr_del_login", savedAt: new Date().toISOString() });
+    expect(resolveAuth(project)).toMatchObject({ token: "apr_del_login", source: "apron login" });
+
+    process.env.APRON_TOKEN = "apr_ci";
+    expect(resolveAuth(project)).toMatchObject({ token: "apr_ci", source: "variable APRON_TOKEN" });
+  });
+
+  test("nombre anterior: hangar.json, .hangar.env y HANGAR_TOKEN siguen funcionando", () => {
     file("hangar.json", JSON.stringify({ server: "https://panel.test/", project: "preno", profiles: {} }));
     file(".hangar.env", "HANGAR_URL=https://panel.test\nHANGAR_TOKEN=hgr_del_archivo\n");
     const project = findProject(dir)!;
-    expect(resolveAuth(project)).toMatchObject({ server: "https://panel.test", token: "hgr_del_archivo", source: ".hangar.env" });
-
-    saveCredential("https://panel.test", "preno", { token: "hgr_del_login", savedAt: new Date().toISOString() });
-    expect(resolveAuth(project).token).toBe("hgr_del_login");
+    expect(project.file.endsWith("hangar.json")).toBe(true);
+    expect(resolveAuth(project)).toMatchObject({ token: "hgr_del_archivo", source: ".hangar.env" });
 
     process.env.HANGAR_TOKEN = "hgr_ci";
-    expect(resolveAuth(project).token).toBe("hgr_ci");
+    expect(resolveAuth(project)).toMatchObject({ token: "hgr_ci", source: "variable HANGAR_TOKEN" });
   });
 
-  test("hangar.json se encuentra desde una subcarpeta", () => {
-    file("hangar.json", JSON.stringify({ project: "x", profiles: {} }));
+  test("si están los dos, manda apron.json", () => {
+    file("hangar.json", JSON.stringify({ project: "viejo", profiles: {} }));
+    file("apron.json", JSON.stringify({ project: "nuevo", profiles: {} }));
+    expect(findProject(dir)?.config.project).toBe("nuevo");
+  });
+
+  test("apron.json se encuentra desde una subcarpeta", () => {
+    file("apron.json", JSON.stringify({ project: "x", profiles: {} }));
     mkdirSync(join(dir, "src", "deep"), { recursive: true });
     expect(findProject(join(dir, "src", "deep"))?.config.project).toBe("x");
   });
 
-  test("sin llave: error con la pista de hangar login", () => {
-    file("hangar.json", JSON.stringify({ server: "https://panel.test", project: "x", profiles: {} }));
+  test("sin llave: error con la pista de apron login", () => {
+    file("apron.json", JSON.stringify({ server: "https://panel.test", project: "x", profiles: {} }));
     expect(() => resolveAuth(findProject(dir))).toThrow(/No tengo llave/);
   });
 });

@@ -1,6 +1,8 @@
 // Configuración global del usuario (fuera de los proyectos): servidor por omisión y llaves por proyecto.
-//   Windows: %APPDATA%\hangar\config.json      macOS/Linux: ~/.config/hangar/config.json
+//   Windows: %APPDATA%\apron\config.json      macOS/Linux: ~/.config/apron/config.json
 // Las llaves NUNCA van en el repo: se guardan aquí, una por servidor + proyecto, con permisos solo para tu usuario.
+// Si solo existe la configuración del nombre anterior (…\hangar\config.json) se lee de ahí, y la siguiente vez que
+// se guarde algo queda en la carpeta nueva.
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -16,17 +18,31 @@ export interface GlobalConfig {
   credentials: Record<string, Record<string, Credential>>; // servidor → proyecto → llave
 }
 
+/** Variable de entorno APRON_<name>, o la del nombre anterior HANGAR_<name>. */
+export function env(name: string): string | undefined {
+  return process.env[`APRON_${name}`] || process.env[`HANGAR_${name}`] || undefined;
+}
+
+function baseDir(): string {
+  return process.platform === "win32"
+    ? (process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"))
+    : (process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"));
+}
+
 export function configPath(): string {
-  if (process.env.HANGAR_CONFIG) return process.env.HANGAR_CONFIG;
-  if (process.platform === "win32") {
-    return join(process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"), "hangar", "config.json");
-  }
-  return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "hangar", "config.json");
+  return env("CONFIG") ?? join(baseDir(), "apron", "config.json");
+}
+
+/** Configuración del nombre anterior (Hangar), solo para leerla. */
+function legacyConfigPath(): string | undefined {
+  if (env("CONFIG")) return undefined;
+  const legacy = join(baseDir(), "hangar", "config.json");
+  return existsSync(legacy) ? legacy : undefined;
 }
 
 export function loadConfig(): GlobalConfig {
-  const path = configPath();
-  if (!existsSync(path)) return { credentials: {} };
+  const path = existsSync(configPath()) ? configPath() : legacyConfigPath();
+  if (!path) return { credentials: {} };
   try {
     const parsed = JSON.parse(readFileSync(path, "utf8")) as Partial<GlobalConfig>;
     return { server: parsed.server, credentials: parsed.credentials ?? {} };

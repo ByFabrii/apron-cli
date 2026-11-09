@@ -1,28 +1,38 @@
 {
-  "name": "@byfabrii/hangar",
-  "version": "0.6.0",
-  "description": "CLI de Hangar: compila y sube builds de cualquier proyecto a tu propio panel",
-  "keywords": ["hangar", "builds", "apk", "expo", "ota", "cli"],
-  "license": "UNLICENSED",
+  "name": "apron",
+  "version": "0.7.0",
+  "description": "Compila, sube y comparte los builds de tus apps (APK, AAB, IPA, OTA de Expo) desde tu propio servidor Apron",
+  "keywords": ["apron", "builds", "apk", "aab", "expo", "ota", "self-hosted", "cli"],
+  "license": "MIT",
+  "author": "Fabrizzio Carbonell",
+  "homepage": "https://github.com/ByFabrii/apron-cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ByFabrii/apron-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ByFabrii/apron-cli/issues"
+  },
   "type": "module",
   "bin": {
-    "hangar": "dist/hangar.js"
+    "apron": "dist/apron.js"
   },
   "files": [
-    "dist/hangar.js",
+    "dist/apron.js",
     "README.md"
   ],
   "engines": {
     "node": ">=20"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "dev": "bun run src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "build:js": "bun build src/index.ts --target=node --outfile dist/hangar.js",
+    "build:js": "bun build src/index.ts --target=node --outfile dist/apron.js",
     "check:pack": "bun run scripts/check-pack.ts",
     "prepublishOnly": "bun run typecheck && bun test && bun run build:js && bun run check:pack"
   },

@@ -1,4 +1,4 @@
-// hangar update: publica una actualización OTA (expo-updates) en el panel.
+// apron update: publica una actualización OTA (expo-updates) en el panel.
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -83,7 +83,7 @@ export async function update(flags: Flags) {
   if (appChannel && appChannel !== channel) warn(`La app pide el canal "${appChannel}" y estás publicando en "${channel}".`);
   info(`Canal ${c.bold(channel)} · runtime ${c.bold(rv)} · ${platforms.join(" + ")}`);
 
-  const out = join(tmpdir(), `hangar-ota-${Date.now()}`);
+  const out = join(tmpdir(), `apron-ota-${Date.now()}`);
   try {
     step("Exportando el JavaScript (npx expo export)…");
     const code = await run(`npx expo export --output-dir "${out}" ${platforms.map((p) => `--platform ${p}`).join(" ")}`, root);

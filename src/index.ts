@@ -1,26 +1,26 @@
 #!/usr/bin/env node
-// Hangar CLI: compila y sube builds de cualquier proyecto a tu panel Hangar.
+// Apron CLI: compila y sube builds de cualquier proyecto a tu panel Apron.
 import * as cmd from "./commands";
 import * as ota from "./ota";
 import { c, CliError } from "./ui";
 import { VERSION } from "./version";
 
-const HELP = `${c.bold("Hangar CLI")} ${VERSION}: tus builds, en tu servidor.
+const HELP = `${c.bold("Apron CLI")} ${VERSION}: tus builds, en tu servidor.
 
 ${c.bold("Uso")}
-  hangar init                    Detecta el proyecto y crea hangar.json
-  hangar login                   Autoriza esta terminal desde el navegador
-  hangar build <perfil>          Compila con el comando del perfil y sube el archivo
-  hangar upload <archivo>        Sube un archivo ya compilado
-  hangar list                    Últimos builds del proyecto
-  hangar share [id|latest]       Enlace para compartir (con QR) del build
-  hangar update                  Publica una actualización OTA (Expo): JS nuevo sin otro APK
-  hangar updates                 Últimas actualizaciones OTA
-  hangar open [settings|latest]  Abre el proyecto en el panel
-  hangar whoami                  A qué proyecto sube esta terminal
-  hangar doctor                  Revisa que todo esté listo
-  hangar logout                  Borra la llave de este proyecto en este equipo
-  hangar config [server <url>]   Panel por omisión y llaves guardadas
+  apron init                    Detecta el proyecto y crea apron.json
+  apron login                   Autoriza esta terminal desde el navegador
+  apron build <perfil>          Compila con el comando del perfil y sube el archivo
+  apron upload <archivo>        Sube un archivo ya compilado
+  apron list                    Últimos builds del proyecto
+  apron share [id|latest]       Enlace para compartir (con QR) del build
+  apron update                  Publica una actualización OTA (Expo): JS nuevo sin otro APK
+  apron updates                 Últimas actualizaciones OTA
+  apron open [settings|latest]  Abre el proyecto en el panel
+  apron whoami                  A qué proyecto sube esta terminal
+  apron doctor                  Revisa que todo esté listo
+  apron logout                  Borra la llave de este proyecto en este equipo
+  apron config [server <url>]   Panel por omisión y llaves guardadas
 
 ${c.bold("Opciones")}
   --profile <p>        Perfil (upload, list, share, open latest)
@@ -40,7 +40,7 @@ ${c.bold("Opciones")}
   --project <slug>     init/login: identificador del proyecto
 
 ${c.bold("Variables")}
-  HANGAR_TOKEN, HANGAR_URL   Para CI/CD: llave y panel sin hangar login
+  APRON_TOKEN, APRON_URL     Para CI/CD: llave y panel sin apron login
   NO_COLOR                   Sin colores
 `;
 
@@ -75,7 +75,7 @@ function takesValue(name: string): boolean {
 
 async function main() {
   const { command, args, flags } = parse(process.argv.slice(2));
-  if (flags.version === true && !command) return console.log(`hangar ${VERSION}`);
+  if (flags.version === true && !command) return console.log(`apron ${VERSION}`);
   if (!command || flags.help || command === "help") return console.log(HELP);
   switch (command) {
     case "init": return cmd.init(flags);
@@ -92,7 +92,7 @@ async function main() {
     case "doctor": return cmd.doctor();
     case "config": return cmd.config(args);
     default:
-      throw new CliError(`No conozco el comando "${command}".`, "Corre `hangar help` para ver los comandos.");
+      throw new CliError(`No conozco el comando "${command}".`, "Corre `apron help` para ver los comandos.");
   }
 }
 

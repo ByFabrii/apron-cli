@@ -1,30 +1,40 @@
-# Hangar CLI
+<p align="center"><img src="docs/logo.svg" width="88" alt="Apron"></p>
 
-Compila y sube builds de cualquier proyecto (Expo/React Native, Flutter, Android, Java, Electron, Tauri, Node…) a tu
-panel Hangar (autohospedado). Necesita Node 20 o más nuevo.
+# Apron CLI
+
+Compila, sube y comparte los builds de tus apps desde tu terminal hacia **tu propio panel Apron**: APK, AAB, IPA,
+instaladores, y actualizaciones OTA para apps de Expo. Funciona con Expo/React Native, Flutter, Android, Java,
+Electron, Tauri y Node.
+
+> **¿Por qué "Apron"?** En un aeropuerto, el *apron* (la plataforma) es donde se estacionan, cargan y despachan los
+> aviones listos para salir. Apron hace eso con tus builds: los guarda listos y los despacha a quien los necesita.
 
 ## Instalar
 
+Necesita Node 20 o más nuevo y un panel Apron (autohospedado).
+
 ```bash
-npm install -g @byfabrii/hangar      # o: pnpm add -g @byfabrii/hangar · bun add -g @byfabrii/hangar
-hangar --version
+npm install -g apron      # o: pnpm add -g apron · bun add -g apron
+apron --version
 ```
 
-El paquete es un solo archivo JavaScript: no tiene dependencias ni scripts de instalación, así que instalarlo no
-ejecuta ni descarga nada más. Para actualizar, el mismo comando.
+El paquete es un solo archivo JavaScript, **sin dependencias ni scripts de instalación**: instalarlo no ejecuta ni
+descarga nada más. Cada versión se publica desde GitHub Actions con
+[firma de origen](https://docs.npmjs.com/generating-provenance-statements) (provenance): en npm puedes comprobar de
+qué commit de este repositorio salió.
 
 ## Usar
 
 ```bash
-hangar init             # en la raíz del proyecto: detecta el tipo y crea hangar.json (va en el repo)
-hangar login            # abre el navegador, eliges el proyecto y autorizas esta terminal
-hangar build preview    # corre el comando del perfil y sube el archivo con versión, commit y notas
-hangar upload app.apk --profile preview
-hangar list
-hangar share latest --profile preview --hours 24   # enlace + QR en la terminal
-hangar open | hangar doctor | hangar whoami | hangar logout
-hangar update --channel preview --message "Arreglo"  # actualización OTA (Expo)
-hangar updates                                       # últimas actualizaciones OTA
+apron init             # en la raíz del proyecto: detecta el tipo y crea apron.json (va en el repo)
+apron login            # abre el navegador, eliges el proyecto y autorizas esta terminal
+apron build preview    # corre el comando del perfil y sube el archivo con versión, commit y notas
+apron upload app.apk --profile preview
+apron list
+apron share latest --profile preview --hours 24   # enlace + QR en la terminal
+apron open | apron doctor | apron whoami | apron logout
+apron update --channel preview --message "Arreglo"  # actualización OTA (Expo)
+apron updates                                       # últimas actualizaciones OTA
 ```
 
 ### Actualizaciones OTA (Expo)
@@ -35,20 +45,20 @@ Mandan JavaScript y assets nuevos a las apps ya instaladas, sin compilar otro AP
 ```json
 "runtimeVersion": { "policy": "appVersion" },
 "updates": {
-  "url": "https://hangar.tu-dominio.com/ota/<proyecto>/manifest",
+  "url": "https://apron.tu-dominio.com/ota/<proyecto>/manifest",
   "requestHeaders": { "expo-channel-name": "preview" }
 }
 ```
 
-Después, cada cambio de JS: `hangar update --channel preview`. Las apps de ese canal con el mismo runtime
+Después, cada cambio de JS: `apron update --channel preview`. Las apps de ese canal con el mismo runtime
 (la versión de la app) lo bajan la próxima vez que abren. Si cambias código nativo, dependencias nativas o la
 versión, compila otro APK. Revertir: desde el panel (sección Actualizaciones OTA del proyecto).
 
-### hangar.json
+### apron.json
 
 ```json
 {
-  "server": "https://hangar.tu-dominio.com",
+  "server": "https://apron.tu-dominio.com",
   "project": "mi-app",
   "profiles": {
     "preview": {
@@ -59,13 +69,13 @@ versión, compila otro APK. Revertir: desde el panel (sección Actualizaciones O
 }
 ```
 
-- `build`: comando que compila (se corre desde la raíz con la shell del sistema). **`hangar build` ejecuta lo que
+- `build`: comando que compila (se corre desde la raíz con la shell del sistema). **`apron build` ejecuta lo que
   diga aquí**, igual que `npm run`: no lo corras en repositorios de los que no te fíes.
 - `artifact`: dónde queda el archivo; admite `*` y `**`. Si coinciden varios, se usa el más nuevo generado por esa
   compilación.
 - `eas` (Expo): compila como ese perfil de `eas.json`. Toma sus variables `env` (siguiendo `extends`), no carga
   `.env` (EAS tampoco lo sube), no se detiene a preguntar por cambios sin commit y limpia el caché de Metro, donde
-  quedan grabadas las variables `EXPO_PUBLIC_` del build anterior. `hangar init` lo pone en cada perfil.
+  quedan grabadas las variables `EXPO_PUBLIC_` del build anterior. `apron init` lo pone en cada perfil.
 - `env`: variables extra para el build; ganan sobre las de `eas`.
 
 Un proyecto Expo con `eas.json` queda así:
@@ -87,28 +97,34 @@ Un proyecto Expo con `eas.json` queda así:
 
 ### Llaves
 
-`hangar login` guarda una llave por panel + proyecto en `%APPDATA%\hangar\config.json` (Windows) o
-`~/.config/hangar/config.json`. Nunca en el repo. Orden en que se busca la llave:
+`apron login` guarda una llave por panel + proyecto en `%APPDATA%\apron\config.json` (Windows) o
+`~/.config/apron/config.json`. Nunca en el repo. Orden en que se busca la llave:
 
-1. `HANGAR_TOKEN` (y `HANGAR_URL`): para CI/CD.
-2. La de `hangar login`.
-3. `.hangar.env` en la raíz del proyecto (compatibilidad con scripts que ya lo usan).
+1. `APRON_TOKEN` (y `APRON_URL`): para CI/CD.
+2. La de `apron login`.
+3. `.apron.env` en la raíz del proyecto (`APRON_URL=…` y `APRON_TOKEN=…`). Agrégalo a tu `.gitignore`.
 
 ### CI (GitHub Actions)
 
 ```yaml
-- run: npm install -g @byfabrii/hangar@0.6.0     # versión fija: no cambia sola entre ejecuciones
-- run: hangar build release
+- run: npm install -g apron@0.7.0     # versión fija: no cambia sola entre ejecuciones
+- run: apron build release
   env:
-    HANGAR_URL: https://hangar.tu-dominio.com
-    HANGAR_TOKEN: ${{ secrets.HANGAR_TOKEN }}
+    APRON_URL: https://apron.tu-dominio.com
+    APRON_TOKEN: ${{ secrets.APRON_TOKEN }}
 ```
+
+## Si venías de Hangar
+
+Apron se llamaba Hangar. Todo lo anterior sigue funcionando sin tocar nada: `hangar.json`, `.hangar.env`, las
+variables `HANGAR_TOKEN` / `HANGAR_URL` y las llaves guardadas por `hangar login`. Si existen `apron.json` y
+`hangar.json`, manda `apron.json`. Para pasarte: renombra los archivos cuando quieras.
 
 ## Seguridad
 
-- La llave de `hangar login` se guarda con permisos solo para tu usuario (`0600`) y nunca en el repo.
+- La llave de `apron login` se guarda con permisos solo para tu usuario (`0600`) y nunca en el repo.
 - Cada llave pertenece a un solo proyecto y se revoca desde el panel (Configuración y llaves).
-- `hangar update` publica JavaScript que las apps instaladas ejecutan: trata esa llave como una de producción.
+- `apron update` publica JavaScript que las apps instaladas ejecutan: trata esa llave como una de producción.
 
 ## Desarrollo
 
@@ -120,17 +136,21 @@ bun install
 bun run dev -- help          # correr sin compilar
 bun test                     # pruebas
 bun run typecheck
-bun run build:js             # dist/hangar.js, el archivo que se publica
+bun run build:js             # dist/apron.js, el archivo que se publica
 bun run check:pack           # qué llevaría el paquete de npm (y que no lleve secretos)
 ```
 
 ### Publicar una versión
 
-1. Sube la versión en `src/version.ts` y `package.json`, y anota los cambios en el CHANGELOG del repo.
-2. Commit, y un tag `cli-vX.Y.Z` con la misma versión: `git tag cli-v0.6.1 && git push origin main cli-v0.6.1`.
-3. El workflow **Publicar CLI en npm** corre pruebas, compila, revisa el paquete (`check:pack`) y publica.
+1. Sube la versión en `src/version.ts` y `package.json`.
+2. Commit, y un tag `vX.Y.Z` con la misma versión: `git tag v0.7.1 && git push origin main v0.7.1`.
+3. El workflow **Publicar en npm** corre pruebas, compila, revisa el paquete (`check:pack`) y publica con
+   firma de origen.
 
-**Una sola vez** (para crear el paquete en npm), desde tu equipo con la cuenta `byfabrii` y su 2FA activo:
-`cd cli && npm login && npm publish --access public`. Después, en npmjs.com → `@byfabrii/hangar` → Settings:
-activa **Trusted publishing** para el repo `ByFabrii/hangar` y el workflow `cli-publish.yml`, y en *Publishing
-access* elige "Require two-factor authentication and disallow tokens". Desde ahí solo GitHub Actions puede publicar.
+**Una sola vez** (para crear el paquete), con 2FA activo en npm: `npm login && npm publish --access public`. Después,
+en npmjs.com → `apron` → Settings: activa **Trusted publishing** para `ByFabrii/apron-cli` y el workflow
+`publish.yml`, y en *Publishing access* elige "Require two-factor authentication and disallow tokens".
+
+## Licencia
+
+[MIT](LICENSE)

@@ -24,15 +24,15 @@ export async function init(flags: Flags) {
   const root = process.cwd();
   const existing = findProject(root);
   if (existing && existing.root === root && !flags.force) {
-    fail(`Ya existe ${PROJECT_FILE} en esta carpeta.`, "Edítalo a mano o usa `hangar init --force` para crearlo de nuevo.");
+    fail(`Ya existe ${PROJECT_FILE} en esta carpeta.`, "Edítalo a mano o usa `apron init --force` para crearlo de nuevo.");
   }
   const detected = detect(root);
   step(`Proyecto detectado: ${c.bold(detected.label)}`);
 
-  const server = normalizeServer(str(flags, "server") ?? (await ask("URL de tu panel Hangar:", resolveServer() ?? undefined)));
+  const server = normalizeServer(str(flags, "server") ?? (await ask("URL de tu panel Apron:", resolveServer() ?? undefined)));
   if (!server || server === "https://") fail("Necesito la URL del panel.");
   const slugSuggestion = detected.name.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  const project = str(flags, "project") ?? (await ask("Identificador del proyecto en Hangar:", slugSuggestion || "mi-app"));
+  const project = str(flags, "project") ?? (await ask("Identificador del proyecto en Apron:", slugSuggestion || "mi-app"));
 
   const profiles = detected.profiles;
   for (const [name, profile] of Object.entries(profiles)) {
@@ -46,7 +46,7 @@ export async function init(flags: Flags) {
   for (const [name, p] of Object.entries(profiles)) {
     info(`${name}: ${p.build || "(sin comando)"} → ${p.artifact || "(sin archivo)"}`);
   }
-  console.log(`\nSiguiente: ${c.bold("hangar login")} para autorizar esta terminal, y luego ${c.bold(`hangar build ${Object.keys(profiles)[0] ?? "release"}`)}.`);
+  console.log(`\nSiguiente: ${c.bold("apron login")} para autorizar esta terminal, y luego ${c.bold(`apron build ${Object.keys(profiles)[0] ?? "release"}`)}.`);
   console.log(c.dim(`${PROJECT_FILE} no tiene secretos: súbelo al repo. Ajusta los comandos si tu proyecto compila distinto.`));
 }
 
@@ -54,7 +54,7 @@ export async function init(flags: Flags) {
 
 export async function login(flags: Flags) {
   const project = findProject();
-  const server = normalizeServer(str(flags, "server") ?? resolveServer(project) ?? (await ask("URL de tu panel Hangar:")));
+  const server = normalizeServer(str(flags, "server") ?? resolveServer(project) ?? (await ask("URL de tu panel Apron:")));
   const api = new Api(server);
   const start = await api.loginStart(machineName(), str(flags, "project") ?? project?.config.project);
 
@@ -69,7 +69,7 @@ export async function login(flags: Flags) {
     const poll = await api.loginPoll(start.deviceCode);
     if (poll.status === "pending") continue;
     if (poll.status === "denied") fail("Rechazaste el acceso en el panel.");
-    if (poll.status === "expired") fail("El código venció. Corre `hangar login` otra vez.");
+    if (poll.status === "expired") fail("El código venció. Corre `apron login` otra vez.");
     if (poll.status === "approved" && poll.token && poll.project) {
       saveCredential(server, poll.project, { token: poll.token, projectName: poll.projectName, savedAt: new Date().toISOString() });
       ok(`Conectado a ${c.bold(poll.projectName ?? poll.project)} (${poll.project}) en ${server}.`);
@@ -80,7 +80,7 @@ export async function login(flags: Flags) {
       return;
     }
   }
-  fail("Se acabó el tiempo para autorizar. Corre `hangar login` otra vez.");
+  fail("Se acabó el tiempo para autorizar. Corre `apron login` otra vez.");
 }
 
 export async function logout() {
@@ -128,7 +128,7 @@ async function uploadFile(project: LoadedProject | undefined, file: string, flag
 
 export async function upload(args: string[], flags: Flags) {
   const file = args[0];
-  if (!file) fail("Falta el archivo.", "Uso: hangar upload <archivo> [--profile preview] [--notes \"…\"]");
+  if (!file) fail("Falta el archivo.", "Uso: apron upload <archivo> [--profile preview] [--notes \"…\"]");
   const path = resolve(file);
   if (!existsSync(path)) fail(`No existe ${file}.`);
   const project = findProject();
@@ -139,7 +139,7 @@ export async function build(args: string[], flags: Flags) {
   const project = requireProject();
   const names = Object.keys(project.config.profiles);
   const profileName = args[0] ?? (names.length === 1 ? names[0] : undefined);
-  if (!profileName) fail("¿Qué perfil compilo?", `Uso: hangar build <perfil>. Perfiles en ${PROJECT_FILE}: ${names.join(", ") || "(ninguno)"}`);
+  if (!profileName) fail("¿Qué perfil compilo?", `Uso: apron build <perfil>. Perfiles en ${PROJECT_FILE}: ${names.join(", ") || "(ninguno)"}`);
   const profile = project.config.profiles[profileName];
   if (!profile) fail(`El perfil "${profileName}" no está en ${PROJECT_FILE}.`, `Perfiles: ${names.join(", ")}`);
   if (!profile.artifact) fail(`El perfil "${profileName}" no dice dónde queda el archivo ("artifact").`);
@@ -210,7 +210,7 @@ async function pickBuild(api: Api, idOrPrefix: string | undefined, profile: stri
     return latest;
   }
   const found = (await api.list(profile, 100)).filter((b) => b.id.startsWith(idOrPrefix));
-  if (found.length === 0) fail(`No encontré un build que empiece con "${idOrPrefix}".`, "Usa `hangar list` para ver los ID.");
+  if (found.length === 0) fail(`No encontré un build que empiece con "${idOrPrefix}".`, "Usa `apron list` para ver los ID.");
   if (found.length > 1) fail(`"${idOrPrefix}" coincide con varios builds; escribe más caracteres del ID.`);
   return found[0]!;
 }
@@ -251,11 +251,11 @@ export async function doctor() {
       warn(badText);
     }
   };
-  console.log(`Hangar CLI ${VERSION} · ${process.platform}-${process.arch}`);
+  console.log(`Apron CLI ${VERSION} · ${process.platform}-${process.arch}`);
   const project = findProject();
-  check(Boolean(project), `${PROJECT_FILE}: ${project?.file}`, `No hay ${PROJECT_FILE} aquí ni más arriba (hangar init).`);
+  check(Boolean(project), `${PROJECT_FILE}: ${project?.file}`, `No hay ${PROJECT_FILE} aquí ni más arriba (apron init).`);
   const server = resolveServer(project);
-  check(Boolean(server), `Panel: ${server}`, "Sin panel configurado (hangar config server <url>).");
+  check(Boolean(server), `Panel: ${server}`, "Sin panel configurado (apron config server <url>).");
   check(Boolean(git.commit(project?.root ?? process.cwd())), "Repositorio git: sí", "No es un repositorio git: no habrá commit ni notas automáticas.");
   if (server) {
     try {

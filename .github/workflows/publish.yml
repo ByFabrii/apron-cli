@@ -1,0 +1,51 @@
+# Publica en npm al subir un tag vX.Y.Z (debe coincidir con package.json), con firma de origen (provenance).
+#
+# Sin tokens guardados: usa "trusted publishing" de npm (OIDC). Una vez, en npmjs.com → paquete apron →
+# Settings → Trusted publishing → GitHub Actions: repo ByFabrii/apron-cli, workflow publish.yml.
+# El primer `npm publish` (para crear el paquete) se hace a mano: ver README.md.
+name: Publicar en npm
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write   # para que npm verifique que la publicación sale de este workflow
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: npm con trusted publishing (11.5+)
+        run: npm install -g npm@11.6.2
+
+      - name: El tag coincide con la versión
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg=$(node -p "require('./package.json').version")
+          [ "$tag" = "$pkg" ] || { echo "El tag ($tag) no coincide con package.json ($pkg)"; exit 1; }
+
+      - name: Dependencias exactas del lockfile, sin scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      # prepublishOnly corre: typecheck, pruebas, build y check-pack (archivos, scripts, dependencias y secretos).
+      - name: Publicar
+        run: npm publish --access public --provenance

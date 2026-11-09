@@ -34,7 +34,7 @@ export interface UploadFields {
   platform?: string;
 }
 
-const USER_AGENT = `hangar-cli/${VERSION} (${process.platform}; ${process.arch})`;
+const USER_AGENT = `apron-cli/${VERSION} (${process.platform}; ${process.arch})`;
 
 export class Api {
   constructor(readonly server: string, private readonly token?: string) {}
@@ -61,7 +61,7 @@ export class Api {
     }
     if (!response.ok) {
       const message = (json as { message?: string } | undefined)?.message;
-      if (response.status === 401) fail("El panel rechazó la llave (no existe o fue revocada).", "Corre `hangar login` otra vez.");
+      if (response.status === 401) fail("El panel rechazó la llave (no existe o fue revocada).", "Corre `apron login` otra vez.");
       if (response.status === 413) fail(message ?? "El archivo es más grande que el máximo del panel.");
       fail(message ?? `El panel respondió ${response.status} en ${method} ${path}.`);
     }
