@@ -1,26 +1,36 @@
 {
-  "name": "hangar-cli",
-  "version": "0.5.1",
-  "description": "CLI de Hangar: compila y sube builds de cualquier proyecto a tu panel",
+  "name": "@byfabrii/hangar",
+  "version": "0.6.0",
+  "description": "CLI de Hangar: compila y sube builds de cualquier proyecto a tu propio panel",
+  "keywords": ["hangar", "builds", "apk", "expo", "ota", "cli"],
+  "license": "UNLICENSED",
   "type": "module",
-  "private": true,
   "bin": {
     "hangar": "dist/hangar.js"
+  },
+  "files": [
+    "dist/hangar.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "bun run src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "build:js": "bun build src/index.ts --target=node --outfile dist/hangar.js",
-    "build:bin": "bun run scripts/build-binaries.ts"
-  },
-  "dependencies": {
-    "qrcode": "1.5.4"
+    "check:pack": "bun run scripts/check-pack.ts",
+    "prepublishOnly": "bun run typecheck && bun test && bun run build:js && bun run check:pack"
   },
   "devDependencies": {
     "@types/bun": "1.2.5",
     "@types/node": "22.13.0",
     "@types/qrcode": "1.5.5",
+    "qrcode": "1.5.4",
     "typescript": "5.7.3"
   }
 }

@@ -1,18 +1,17 @@
 # Hangar CLI
 
 Compila y sube builds de cualquier proyecto (Expo/React Native, Flutter, Android, Java, Electron, Tauri, Node…) a tu
-panel Hangar. Es un solo ejecutable: no necesita Node, Java ni nada más instalado.
+panel Hangar (autohospedado). Necesita Node 20 o más nuevo.
 
 ## Instalar
 
-```powershell
-irm https://hangar.fabrizziodev.com/install.ps1 | iex      # Windows
-```
 ```bash
-curl -fsSL https://hangar.fabrizziodev.com/install.sh | sh   # macOS / Linux
+npm install -g @byfabrii/hangar      # o: pnpm add -g @byfabrii/hangar · bun add -g @byfabrii/hangar
+hangar --version
 ```
 
-Opciones del instalador: `HANGAR_INSTALL_DIR` (otra carpeta) y `HANGAR_NO_MODIFY_PATH=1` (no tocar el PATH).
+El paquete es un solo archivo JavaScript: no tiene dependencias ni scripts de instalación, así que instalarlo no
+ejecuta ni descarga nada más. Para actualizar, el mismo comando.
 
 ## Usar
 
@@ -36,7 +35,7 @@ Mandan JavaScript y assets nuevos a las apps ya instaladas, sin compilar otro AP
 ```json
 "runtimeVersion": { "policy": "appVersion" },
 "updates": {
-  "url": "https://hangar.fabrizziodev.com/ota/<proyecto>/manifest",
+  "url": "https://hangar.tu-dominio.com/ota/<proyecto>/manifest",
   "requestHeaders": { "expo-channel-name": "preview" }
 }
 ```
@@ -49,18 +48,19 @@ versión, compila otro APK. Revertir: desde el panel (sección Actualizaciones O
 
 ```json
 {
-  "server": "https://hangar.fabrizziodev.com",
-  "project": "preno",
+  "server": "https://hangar.tu-dominio.com",
+  "project": "mi-app",
   "profiles": {
     "preview": {
-      "build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android.ps1 preview",
-      "artifact": "dist-android/*-preview.apk"
+      "build": "cd android && ./gradlew assembleRelease",
+      "artifact": "android/app/build/outputs/apk/release/*.apk"
     }
   }
 }
 ```
 
-- `build`: comando que compila (se corre desde la raíz con la shell del sistema).
+- `build`: comando que compila (se corre desde la raíz con la shell del sistema). **`hangar build` ejecuta lo que
+  diga aquí**, igual que `npm run`: no lo corras en repositorios de los que no te fíes.
 - `artifact`: dónde queda el archivo; admite `*` y `**`. Si coinciden varios, se usa el más nuevo generado por esa
   compilación.
 - `eas` (Expo): compila como ese perfil de `eas.json`. Toma sus variables `env` (siguiendo `extends`), no carga
@@ -97,11 +97,18 @@ Un proyecto Expo con `eas.json` queda así:
 ### CI (GitHub Actions)
 
 ```yaml
-- run: curl -fsSL https://hangar.fabrizziodev.com/install.sh | sh
-- run: ~/.hangar/bin/hangar build release
+- run: npm install -g @byfabrii/hangar@0.6.0     # versión fija: no cambia sola entre ejecuciones
+- run: hangar build release
   env:
+    HANGAR_URL: https://hangar.tu-dominio.com
     HANGAR_TOKEN: ${{ secrets.HANGAR_TOKEN }}
 ```
+
+## Seguridad
+
+- La llave de `hangar login` se guarda con permisos solo para tu usuario (`0600`) y nunca en el repo.
+- Cada llave pertenece a un solo proyecto y se revoca desde el panel (Configuración y llaves).
+- `hangar update` publica JavaScript que las apps instaladas ejecutan: trata esa llave como una de producción.
 
 ## Desarrollo
 
@@ -113,13 +120,17 @@ bun install
 bun run dev -- help          # correr sin compilar
 bun test                     # pruebas
 bun run typecheck
-bun run scripts/build-binaries.ts windows-x64   # un ejecutable en dist/bin/
+bun run build:js             # dist/hangar.js, el archivo que se publica
+bun run check:pack           # qué llevaría el paquete de npm (y que no lleve secretos)
 ```
 
 ### Publicar una versión
 
-1. Sube `VERSION` en `src/version.ts` y `package.json`.
-2. En el panel crea (una vez) el proyecto **hangar-cli** y guarda su llave en `cli/.hangar.env`
-   (`HANGAR_URL=…` y `HANGAR_TOKEN=…`; git lo ignora).
-3. `bun run scripts/release.ts`: compila las 5 plataformas y las sube al proyecto `hangar-cli`, un perfil por
-   plataforma. Los instaladores descargan siempre la más nueva.
+1. Sube la versión en `src/version.ts` y `package.json`, y anota los cambios en el CHANGELOG del repo.
+2. Commit, y un tag `cli-vX.Y.Z` con la misma versión: `git tag cli-v0.6.1 && git push origin main cli-v0.6.1`.
+3. El workflow **Publicar CLI en npm** corre pruebas, compila, revisa el paquete (`check:pack`) y publica.
+
+**Una sola vez** (para crear el paquete en npm), desde tu equipo con la cuenta `byfabrii` y su 2FA activo:
+`cd cli && npm login && npm publish --access public`. Después, en npmjs.com → `@byfabrii/hangar` → Settings:
+activa **Trusted publishing** para el repo `ByFabrii/hangar` y el workflow `cli-publish.yml`, y en *Publishing
+access* elige "Require two-factor authentication and disallow tokens". Desde ahí solo GitHub Actions puede publicar.

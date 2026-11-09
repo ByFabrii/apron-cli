@@ -4,13 +4,11 @@
   "workspaces": {
     "": {
       "name": "hangar-cli",
-      "dependencies": {
-        "qrcode": "1.5.4",
-      },
       "devDependencies": {
         "@types/bun": "1.2.5",
         "@types/node": "22.13.0",
         "@types/qrcode": "1.5.5",
+        "qrcode": "1.5.4",
         "typescript": "5.7.3",
       },
     },
