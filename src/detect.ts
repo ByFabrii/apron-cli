@@ -55,10 +55,16 @@ export function detect(root: string): Detected {
     const eas = readJson(root, "eas.json");
     const easProfiles = Object.keys(eas?.build ?? {});
     const profiles: Record<string, ProfileConfig> = {};
+    // --clean: sin él, si android/ ya existe, prebuild no aplica cambios de app.json (versión, permisos...)
+    const prebuild = "npx expo prebuild --clean --platform android";
     for (const p of easProfiles.length ? easProfiles : ["preview"]) {
-      profiles[p] = p === "production"
-        ? { build: `npx expo prebuild --platform android && cd android && ${gradlew} bundleRelease`, artifact: "android/app/build/outputs/bundle/release/*.aab" }
-        : { build: `npx expo prebuild --platform android && cd android && ${gradlew} assembleRelease`, artifact: "android/app/build/outputs/apk/release/*.apk" };
+      profiles[p] = {
+        // Con "eas" el build usa las variables de ese perfil de eas.json, como en EAS (buildenv.ts)
+        ...(easProfiles.length ? { eas: p } : {}),
+        ...(p === "production"
+          ? { build: `${prebuild} && cd android && ${gradlew} bundleRelease`, artifact: "android/app/build/outputs/bundle/release/*.aab" }
+          : { build: `${prebuild} && cd android && ${gradlew} assembleRelease`, artifact: "android/app/build/outputs/apk/release/*.apk" }),
+      };
     }
     return { kind: "expo", label: "Expo / React Native", name: appName, profiles };
   }

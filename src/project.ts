@@ -19,6 +19,13 @@ export interface ProfileConfig {
   build?: string;
   /** Dónde queda el archivo (admite * y **). Si coinciden varios, se usa el más nuevo. */
   artifact?: string;
+  /**
+   * Expo: compila como ese perfil de eas.json (sus variables "env", sin .env y con el
+   * caché de Metro limpio). Ver buildenv.ts.
+   */
+  eas?: string;
+  /** Variables de entorno extra para el build. Ganan sobre las de "eas". */
+  env?: Record<string, string>;
 }
 
 export interface ProjectConfig {

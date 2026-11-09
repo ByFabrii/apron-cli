@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { detectVersion } from "../src/appversion";
 import { saveCredential } from "../src/config";
+import { buildEnv, easProfileEnv } from "../src/buildenv";
 import { detect } from "../src/detect";
 import { findFiles } from "../src/glob";
 import { findProject, resolveAuth } from "../src/project";
@@ -91,7 +92,12 @@ describe("detección del proyecto", () => {
   test("Expo con eas.json usa sus perfiles", () => {
     file("package.json", JSON.stringify({ dependencies: { expo: "54.0.0" } }));
     file("eas.json", JSON.stringify({ build: { development: {}, preview: {}, production: {} } }));
-    expect(Object.keys(detect(dir).profiles)).toEqual(["development", "preview", "production"]);
+    const profiles = detect(dir).profiles;
+    expect(Object.keys(profiles)).toEqual(["development", "preview", "production"]);
+    // Cada perfil compila como su perfil de EAS y regenera android/
+    expect(profiles.preview?.eas).toBe("preview");
+    expect(profiles.production?.build).toContain("expo prebuild --clean");
+    expect(profiles.production?.artifact).toEndWith(".aab");
   });
   test("Flutter, Maven y genérico", () => {
     file("pubspec.yaml", "name: mi_app\nversion: 1.0.0\n");
@@ -101,6 +107,43 @@ describe("detección del proyecto", () => {
     expect(detect(dir).profiles.release?.artifact).toBe("target/*.jar");
     rmSync(join(dir, "pom.xml"));
     expect(detect(dir).kind).toBe("generic");
+  });
+});
+
+describe("variables del build", () => {
+  const eas = {
+    build: {
+      preview: { env: { EXPO_PUBLIC_API: "https://api.test", EXPO_PUBLIC_MODE: "off" } },
+      demo: { extends: "preview", env: { EXPO_PUBLIC_MODE: "demo" } },
+      loop: { extends: "loop" },
+    },
+  };
+  const noFail = (msg: string): never => {
+    throw new Error(msg);
+  };
+
+  test("eas.json: el perfil hereda de extends y gana el suyo", () => {
+    file("eas.json", JSON.stringify(eas));
+    expect(easProfileEnv(dir, "demo")).toEqual({ EXPO_PUBLIC_API: "https://api.test", EXPO_PUBLIC_MODE: "demo" });
+    expect(easProfileEnv(dir, "loop")).toEqual({});
+    expect(easProfileEnv(dir, "no-existe")).toBeUndefined();
+  });
+
+  test("con eas: sin .env, sin aviso de git y env de hangar.json al final", () => {
+    file("eas.json", JSON.stringify(eas));
+    process.env.EXPO_PUBLIC_MODE = "demo"; // como si viniera de la terminal
+    const { env: out, added } = buildEnv(dir, { eas: "preview", env: { EXPO_PUBLIC_API: "https://local" } }, noFail);
+    expect(out.EXPO_PUBLIC_MODE).toBe("off");
+    expect(out.EXPO_PUBLIC_API).toBe("https://local");
+    expect(out.EXPO_NO_DOTENV).toBe("1");
+    expect(out.EXPO_NO_GIT_STATUS).toBe("1");
+    expect(added).toContain("EXPO_PUBLIC_MODE");
+  });
+
+  test("sin eas no se agrega nada; eas inexistente falla", () => {
+    file("eas.json", JSON.stringify(eas));
+    expect(buildEnv(dir, { build: "x" }, noFail).added).toEqual([]);
+    expect(() => buildEnv(dir, { eas: "otro" }, noFail)).toThrow(/no está en eas.json/);
   });
 });
 

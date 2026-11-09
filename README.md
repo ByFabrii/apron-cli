@@ -63,6 +63,20 @@ versión, compila otro APK. Revertir: desde el panel (sección Actualizaciones O
 - `build`: comando que compila (se corre desde la raíz con la shell del sistema).
 - `artifact`: dónde queda el archivo; admite `*` y `**`. Si coinciden varios, se usa el más nuevo generado por esa
   compilación.
+- `eas` (Expo): compila como ese perfil de `eas.json`. Toma sus variables `env` (siguiendo `extends`), no carga
+  `.env` (EAS tampoco lo sube), no se detiene a preguntar por cambios sin commit y limpia el caché de Metro, donde
+  quedan grabadas las variables `EXPO_PUBLIC_` del build anterior. `hangar init` lo pone en cada perfil.
+- `env`: variables extra para el build; ganan sobre las de `eas`.
+
+Un proyecto Expo con `eas.json` queda así:
+
+```json
+"demo": {
+  "eas": "demo",
+  "build": "npx expo prebuild --clean --platform android && cd android && gradlew.bat assembleRelease",
+  "artifact": "android/app/build/outputs/apk/release/*.apk"
+}
+```
 
 ### Qué manda en cada subida
 

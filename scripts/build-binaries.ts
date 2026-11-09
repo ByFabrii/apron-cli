@@ -13,8 +13,12 @@ export function outputFor(platform: string): string {
 export function buildBinary(platform: string): string {
   const outfile = outputFor(platform);
   mkdirSync(join(import.meta.dir, "..", "dist", "bin"), { recursive: true });
+  // Sin cargar el .env ni el bunfig.toml de la carpeta donde se corre: el ejecutable se
+  // usa dentro de los proyectos, y sus variables se colaban a los builds (un .env con
+  // modo demo hacía salir así hasta el build de producción).
   const result = Bun.spawnSync(
-    ["bun", "build", "--compile", "--minify", "--sourcemap=none", `--target=bun-${platform}`,
+    ["bun", "build", "--compile", "--no-compile-autoload-dotenv", "--no-compile-autoload-bunfig",
+      "--minify", "--sourcemap=none", `--target=bun-${platform}`,
       join(import.meta.dir, "..", "src", "index.ts"), "--outfile", outfile],
     { stdout: "inherit", stderr: "inherit" },
   );

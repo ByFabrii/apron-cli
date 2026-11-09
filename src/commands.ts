@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { basename, relative, resolve } from "node:path";
 import { Api, fileSize, type BuildInfo } from "./api";
 import { detectVersion } from "./appversion";
+import { buildEnv, clearMetroCache } from "./buildenv";
 import { configPath, loadConfig, normalizeServer, removeCredential, saveConfig, saveCredential } from "./config";
 import { detect } from "./detect";
 import * as git from "./git";
@@ -154,8 +155,14 @@ export async function build(args: string[], flags: Flags) {
 
   const started = Date.now();
   if (profile.build && !flags["skip-build"]) {
+    const { env, added } = buildEnv(project.root, profile, fail);
+    if (profile.eas) {
+      info(`Como el perfil ${c.bold(profile.eas)} de eas.json, sin .env`);
+      info(`Caché de Metro limpio: ${c.dim(clearMetroCache())}`);
+    }
+    if (added.length) info(`Variables: ${c.dim(added.join(", "))}`);
     step(`Compilando ${c.bold(profileName)}: ${c.dim(profile.build)}`);
-    const code = await run(profile.build, project.root);
+    const code = await run(profile.build, project.root, env);
     if (code !== 0) fail(`La compilación terminó con error (código ${code}).`);
   }
   const candidates = findFiles(project.root, profile.artifact);
@@ -170,9 +177,9 @@ export async function build(args: string[], flags: Flags) {
   await uploadFile(project, artifact.path, flags, profileName);
 }
 
-function run(command: string, cwd: string): Promise<number> {
+function run(command: string, cwd: string, env: NodeJS.ProcessEnv = process.env): Promise<number> {
   return new Promise((resolvePromise) => {
-    const child = spawn(command, { cwd, shell: true, stdio: "inherit" });
+    const child = spawn(command, { cwd, shell: true, stdio: "inherit", env });
     child.on("error", () => resolvePromise(127));
     child.on("close", (code) => resolvePromise(code ?? 1));
   });
