@@ -46,6 +46,10 @@ jobs:
       - name: Dependencias exactas del lockfile, sin scripts
         run: bun install --frozen-lockfile --ignore-scripts
 
+      # Compilar ANTES de que npm lea package.json (si dist/apron.js no existe, npm puede quitar "bin").
+      - name: Compilar
+        run: bun run build:js
+
       # prepublishOnly corre: typecheck, pruebas, build y check-pack (archivos, scripts, dependencias y secretos).
       - name: Publicar
         run: npm publish --access public --provenance

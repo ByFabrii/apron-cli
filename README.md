@@ -147,7 +147,8 @@ bun run check:pack           # qué llevaría el paquete de npm (y que no lleve 
 3. El workflow **Publicar en npm** corre pruebas, compila, revisa el paquete (`check:pack`) y publica con
    firma de origen.
 
-**Una sola vez** (para crear el paquete), con 2FA activo en npm: `npm login && npm publish --access public`. Después,
+**Una sola vez** (para crear el paquete), con 2FA activo en npm:
+`bun install && bun run build:js && npm login && npm publish --access public`. Después,
 en npmjs.com → `apron` → Settings: activa **Trusted publishing** para `ByFabrii/apron-cli` y el workflow
 `publish.yml`, y en *Publishing access* elige "Require two-factor authentication and disallow tokens".
 

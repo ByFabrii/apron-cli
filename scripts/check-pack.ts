@@ -3,7 +3,7 @@
 //  - package.json tiene scripts de instalación (preinstall/install/postinstall/prepare) o dependencias:
 //    quien instala el CLI no debe ejecutar ni descargar nada más;
 //  - el código publicado contiene algo que parezca una llave, un webhook o una ruta de esta computadora.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 const fail = (msg: string): never => {
@@ -19,6 +19,14 @@ for (const field of ["dependencies", "optionalDependencies", "peerDependencies",
   if (pkg[field] && Object.keys(pkg[field]).length > 0) {
     fail(`package.json tiene "${field}": el CLI se publica como un solo archivo, sin dependencias.`);
   }
+}
+
+// El comando `apron` debe existir ANTES de que npm lea package.json: si dist/apron.js no está, algunas versiones de
+// npm quitan "bin" del paquete publicado y la instalación ya no crea el comando.
+if (pkg.bin?.apron !== "dist/apron.js") fail(`package.json debe declarar "bin": {"apron": "dist/apron.js"}.`);
+if (!existsSync("dist/apron.js")) fail("Falta dist/apron.js: corre `bun run build:js` antes de `npm publish`.");
+if (!readFileSync("dist/apron.js", "utf8").startsWith("#!/usr/bin/env node")) {
+  fail("dist/apron.js no empieza con #!/usr/bin/env node: en macOS y Linux no se podría ejecutar.");
 }
 
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
