@@ -8,6 +8,8 @@ import { buildEnv, easProfileEnv } from "../src/buildenv";
 import { detect } from "../src/detect";
 import { findFiles } from "../src/glob";
 import { findProject, resolveAuth } from "../src/project";
+import { compareVersions, newerVersion } from "../src/updatecheck";
+import { VERSION } from "../src/version";
 
 let dir: string;
 const env = { ...process.env };
@@ -186,5 +188,30 @@ describe("de dónde sale la llave", () => {
   test("sin llave: error con la pista de apron login", () => {
     file("apron.json", JSON.stringify({ server: "https://panel.test", project: "x", profiles: {} }));
     expect(() => resolveAuth(findProject(dir))).toThrow(/No tengo llave/);
+  });
+});
+
+describe("aviso de versión nueva", () => {
+  const reply = (version: string) => (async () => new Response(JSON.stringify({ version }))) as unknown as typeof fetch;
+  const broken = (async () => { throw new Error("sin red"); }) as unknown as typeof fetch;
+
+  test("compara x.y.z como números", () => {
+    expect(compareVersions("0.10.0", "0.9.9")).toBe(1);
+    expect(compareVersions("0.7.0", "0.7.0")).toBe(0);
+    expect(compareVersions("1.0.0-beta.1", "1.0.0")).toBe(0);
+    expect(compareVersions("0.7.1", "0.8.0")).toBe(-1);
+  });
+
+  test("avisa si npm tiene una más nueva y lo recuerda un día sin volver a preguntar", async () => {
+    expect(await newerVersion(1_000, reply("99.0.0"))).toBe("99.0.0");
+    let asked = false;
+    const spy = (async () => { asked = true; return new Response("{}"); }) as unknown as typeof fetch;
+    expect(await newerVersion(1_000 + 60_000, spy)).toBe("99.0.0");
+    expect(asked).toBe(false);
+  });
+
+  test("sin red no avisa ni truena; con la misma versión tampoco avisa", async () => {
+    expect(await newerVersion(1_000, broken)).toBeUndefined();
+    expect(await newerVersion(1_000 + 2 * 86_400_000, reply(VERSION))).toBeUndefined();
   });
 });

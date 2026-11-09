@@ -3,6 +3,7 @@
 import * as cmd from "./commands";
 import * as ota from "./ota";
 import { c, CliError } from "./ui";
+import * as updates from "./updatecheck";
 import { VERSION } from "./version";
 
 const HELP = `${c.bold("Apron CLI")} ${VERSION}: tus builds, en tu servidor.
@@ -41,6 +42,7 @@ ${c.bold("Opciones")}
 
 ${c.bold("Variables")}
   APRON_TOKEN, APRON_URL     Para CI/CD: llave y panel sin apron login
+  APRON_NO_UPDATE_CHECK=1    No revisar en npm si hay versión nueva (no se revisa en CI)
   NO_COLOR                   Sin colores
 `;
 
@@ -77,6 +79,14 @@ async function main() {
   const { command, args, flags } = parse(process.argv.slice(2));
   if (flags.version === true && !command) return console.log(`apron ${VERSION}`);
   if (!command || flags.help || command === "help") return console.log(HELP);
+  // Se revisa mientras corre el comando; el aviso sale al final para no mezclarse con su salida.
+  const newer = updates.enabled() ? updates.newerVersion().catch(() => undefined) : Promise.resolve(undefined);
+  await run(command, args, flags);
+  const latest = await newer;
+  if (latest) updates.printNotice(latest);
+}
+
+async function run(command: string, args: string[], flags: cmd.Flags) {
   switch (command) {
     case "init": return cmd.init(flags);
     case "login": return cmd.login(flags);

@@ -12,6 +12,7 @@ import { autoNotes } from "./notes";
 import { findProject, requireProject, resolveAuth, resolveServer, writeProject, PROJECT_FILE, type LoadedProject, type ProjectConfig } from "./project";
 import { machineName, openUrl, terminalQr } from "./system";
 import { ask, c, fail, formatSize, info, interactive, ok, relative as ago, step, table, warn } from "./ui";
+import { INSTALL, newerVersion } from "./updatecheck";
 import { VERSION } from "./version";
 
 export type Flags = Record<string, string | boolean>;
@@ -272,6 +273,8 @@ export async function doctor() {
       check(Boolean(p.artifact), `Perfil ${name}: ${p.build ?? "(sin comando)"} → ${p.artifact}`, `Perfil ${name}: falta "artifact".`);
     }
   }
+  const newer = await newerVersion();
+  check(!newer, `CLI al día (${VERSION})`, `Hay una versión nueva del CLI: ${newer}. Actualiza con: ${INSTALL}`);
   console.log(problems === 0 ? c.green("\nTodo listo.") : c.yellow(`\n${problems} cosa(s) por revisar.`));
   if (problems > 0) process.exitCode = 1;
 }

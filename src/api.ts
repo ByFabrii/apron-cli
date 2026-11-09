@@ -3,6 +3,7 @@ import { openAsBlob, statSync } from "node:fs";
 import { basename } from "node:path";
 import { VERSION } from "./version";
 import { fail } from "./ui";
+import { INSTALL } from "./updatecheck";
 
 export interface BuildInfo {
   id: string;
@@ -63,6 +64,7 @@ export class Api {
       const message = (json as { message?: string } | undefined)?.message;
       if (response.status === 401) fail("El panel rechazó la llave (no existe o fue revocada).", "Corre `apron login` otra vez.");
       if (response.status === 413) fail(message ?? "El archivo es más grande que el máximo del panel.");
+      if (response.status === 426) fail(message ?? "Este apron es muy viejo para el panel.", `Actualiza con: ${INSTALL}`);
       fail(message ?? `El panel respondió ${response.status} en ${method} ${path}.`);
     }
     return json as T;

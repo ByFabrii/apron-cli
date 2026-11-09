@@ -24,6 +24,16 @@ descarga nada más. Cada versión se publica desde GitHub Actions con
 [firma de origen](https://docs.npmjs.com/generating-provenance-statements) (provenance): en npm puedes comprobar de
 qué commit de este repositorio salió.
 
+### Actualizar
+
+```bash
+npm install -g @byfabrii/apron      # o: apron doctor, que dice si hay versión nueva
+```
+
+Una vez al día el CLI pregunta a npm cuál es la última versión y, si hay una más nueva, lo dice al final del comando.
+Si el panel ya no acepta tu versión (cambió su API), el comando se detiene con el mismo mensaje y el comando para
+actualizar.
+
 ## Usar
 
 ```bash
@@ -108,7 +118,7 @@ Un proyecto Expo con `eas.json` queda así:
 ### CI (GitHub Actions)
 
 ```yaml
-- run: npm install -g @byfabrii/apron@0.7.0     # versión fija: no cambia sola entre ejecuciones
+- run: npm install -g @byfabrii/apron@0.8.0     # versión fija: no cambia sola entre ejecuciones
 - run: apron build release
   env:
     APRON_URL: https://apron.tu-dominio.com
@@ -126,13 +136,14 @@ variables `HANGAR_TOKEN` / `HANGAR_URL` y las llaves guardadas por `hangar login
 - La llave de `apron login` se guarda con permisos solo para tu usuario (`0600`) y nunca en el repo.
 - Cada llave pertenece a un solo proyecto y se revoca desde el panel (Configuración y llaves).
 - `apron update` publica JavaScript que las apps instaladas ejecutan: trata esa llave como una de producción.
+- Lo único que hace fuera de tu panel es la revisión diaria de versión: una petición pública a
+  `registry.npmjs.org` que no lleva nada tuyo. No se hace en CI ni sin terminal; apágala con `APRON_NO_UPDATE_CHECK=1`.
 
 ## Desarrollo
 
 Requiere [Bun](https://bun.sh).
 
 ```bash
-cd cli
 bun install
 bun run dev -- help          # correr sin compilar
 bun test                     # pruebas
@@ -144,7 +155,7 @@ bun run check:pack           # qué llevaría el paquete de npm (y que no lleve 
 ### Publicar una versión
 
 1. Sube la versión en `src/version.ts` y `package.json`.
-2. Commit, y un tag `vX.Y.Z` con la misma versión: `git tag v0.7.1 && git push origin main v0.7.1`.
+2. Commit, y un tag `vX.Y.Z` con la misma versión: `git tag v0.8.0 && git push origin main v0.8.0`.
 3. El workflow **Publicar en npm** corre pruebas, compila, revisa el paquete (`check:pack`) y publica con
    firma de origen.
 
