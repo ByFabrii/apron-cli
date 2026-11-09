@@ -1,6 +1,6 @@
 # Publica en npm al subir un tag vX.Y.Z (debe coincidir con package.json), con firma de origen (provenance).
 #
-# Sin tokens guardados: usa "trusted publishing" de npm (OIDC). Una vez, en npmjs.com → paquete apron →
+# Sin tokens guardados: usa "trusted publishing" de npm (OIDC). Una vez, en npmjs.com → paquete @byfabrii/apron →
 # Settings → Trusted publishing → GitHub Actions: repo ByFabrii/apron-cli, workflow publish.yml.
 # El primer `npm publish` (para crear el paquete) se hace a mano: ver README.md.
 name: Publicar en npm

@@ -14,10 +14,11 @@ Electron, Tauri y Node.
 Necesita Node 20 o más nuevo y un panel Apron (autohospedado).
 
 ```bash
-npm install -g apron      # o: pnpm add -g apron · bun add -g apron
+npm install -g @byfabrii/apron      # o: pnpm add -g @byfabrii/apron · bun add -g @byfabrii/apron
 apron --version
 ```
 
+El paquete se llama `@byfabrii/apron` (npm no permite `apron` a secas por parecerse a `cron`); el comando es `apron`.
 El paquete es un solo archivo JavaScript, **sin dependencias ni scripts de instalación**: instalarlo no ejecuta ni
 descarga nada más. Cada versión se publica desde GitHub Actions con
 [firma de origen](https://docs.npmjs.com/generating-provenance-statements) (provenance): en npm puedes comprobar de
@@ -107,7 +108,7 @@ Un proyecto Expo con `eas.json` queda así:
 ### CI (GitHub Actions)
 
 ```yaml
-- run: npm install -g apron@0.7.0     # versión fija: no cambia sola entre ejecuciones
+- run: npm install -g @byfabrii/apron@0.7.0     # versión fija: no cambia sola entre ejecuciones
 - run: apron build release
   env:
     APRON_URL: https://apron.tu-dominio.com
@@ -149,7 +150,7 @@ bun run check:pack           # qué llevaría el paquete de npm (y que no lleve 
 
 **Una sola vez** (para crear el paquete), con 2FA activo en npm:
 `bun install && bun run build:js && npm login && npm publish --access public`. Después,
-en npmjs.com → `apron` → Settings: activa **Trusted publishing** para `ByFabrii/apron-cli` y el workflow
+en npmjs.com → `@byfabrii/apron` → Settings: activa **Trusted publishing** para `ByFabrii/apron-cli` y el workflow
 `publish.yml`, y en *Publishing access* elige "Require two-factor authentication and disallow tokens".
 
 ## Licencia
