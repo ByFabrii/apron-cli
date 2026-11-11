@@ -4,8 +4,9 @@ import { existsSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Api } from "./api";
+import { buildEnv, clearMetroCache, easProfileEnv } from "./buildenv";
 import * as git from "./git";
-import { requireProject, resolveAuth } from "./project";
+import { requireProject, resolveAuth, type LoadedProject, type ProfileConfig } from "./project";
 import { c, fail, formatSize, info, ok, relative as ago, step, table, warn } from "./ui";
 
 type Flags = Record<string, string | boolean>;
@@ -20,17 +21,17 @@ interface ExpoConfig {
   [key: string]: unknown;
 }
 
-function run(command: string, cwd: string): Promise<number> {
+function run(command: string, cwd: string, env: NodeJS.ProcessEnv): Promise<number> {
   return new Promise((resolve) => {
-    const child = spawn(command, { cwd, shell: true, stdio: "inherit" });
+    const child = spawn(command, { cwd, env, shell: true, stdio: "inherit" });
     child.on("error", () => resolve(127));
     child.on("close", (code) => resolve(code ?? 1));
   });
 }
 
 /** `npx expo config --json --type public`: la configuración ya resuelta (app.json + app.config.js). */
-function expoConfig(root: string): ExpoConfig {
-  const result = spawnSync("npx expo config --json --type public", { cwd: root, shell: true, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+function expoConfig(root: string, env: NodeJS.ProcessEnv): ExpoConfig {
+  const result = spawnSync("npx expo config --json --type public", { cwd: root, env, shell: true, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
   const out = result.stdout ?? "";
   const start = out.indexOf("{");
   if (result.status !== 0 || start < 0) fail("No pude leer la configuración de Expo (npx expo config).", (result.stderr ?? "").trim().split("\n").slice(-3).join(" "));
@@ -54,6 +55,19 @@ function runtimeVersion(config: ExpoConfig, flags: Flags): string {
   fail("app.json no tiene runtimeVersion.", "Agrega \"runtimeVersion\": { \"policy\": \"appVersion\" } dentro de \"expo\" y compila un APK nuevo.");
 }
 
+/**
+ * Perfil con el que se exporta: --profile, o el que se llama como el canal. Busca primero en apron.json y luego en
+ * eas.json. Así el JavaScript de la actualización lleva las mismas variables (EXPO_PUBLIC_…) que el APK que la recibe.
+ */
+export function updateProfile(project: LoadedProject, channel: string, explicit?: string): { name: string; profile: ProfileConfig } | undefined {
+  const name = explicit ?? channel;
+  const own = project.config.profiles[name];
+  if (own) return { name, profile: own };
+  if (easProfileEnv(project.root, name)) return { name, profile: { eas: name } };
+  if (explicit) fail(`No existe el perfil "${explicit}" ni en apron.json ni en eas.json.`);
+  return undefined;
+}
+
 export async function update(flags: Flags) {
   const project = requireProject();
   const root = project.root;
@@ -70,8 +84,22 @@ export async function update(flags: Flags) {
   const platforms = platformFlag === "all" ? ["android", "ios"] : [platformFlag];
   if (!platforms.every((p) => p === "android" || p === "ios")) fail("--platform va con android, ios o all.");
 
+  const selected = updateProfile(project, channel, str(flags, "profile"));
+  let env: NodeJS.ProcessEnv = process.env;
+  if (selected) {
+    const built = buildEnv(root, selected.profile, fail);
+    env = built.env;
+    if (selected.profile.eas) {
+      info(`Como el perfil ${c.bold(selected.profile.eas)} de eas.json, sin .env (igual que apron build)`);
+      info(`Caché de Metro limpio: ${c.dim(clearMetroCache())}`);
+    }
+    if (built.added.length) info(`Variables del perfil ${selected.name}: ${c.dim(built.added.join(", "))}`);
+  } else {
+    info(`No hay un perfil "${channel}" en apron.json ni en eas.json: se exporta con tus variables y .env.`);
+  }
+
   step("Leyendo la configuración de Expo…");
-  const config = expoConfig(root);
+  const config = expoConfig(root, env);
   const rv = runtimeVersion(config, flags);
   const expected = `${auth.server}/ota/${me.slug}/manifest`;
   if (!config.updates?.url) {
@@ -86,7 +114,7 @@ export async function update(flags: Flags) {
   const out = join(tmpdir(), `apron-ota-${Date.now()}`);
   try {
     step("Exportando el JavaScript (npx expo export)…");
-    const code = await run(`npx expo export --output-dir "${out}" ${platforms.map((p) => `--platform ${p}`).join(" ")}`, root);
+    const code = await run(`npx expo export --output-dir "${out}" ${platforms.map((p) => `--platform ${p}`).join(" ")}`, root, env);
     if (code !== 0) fail(`npx expo export terminó con error (código ${code}).`);
     const metadataFile = join(out, "metadata.json");
     if (!existsSync(metadataFile)) fail("La exportación no generó metadata.json.");

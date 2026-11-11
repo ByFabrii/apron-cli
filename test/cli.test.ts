@@ -9,6 +9,7 @@ import { detect } from "../src/detect";
 import { findFiles } from "../src/glob";
 import { findProject, resolveAuth } from "../src/project";
 import { compareVersions, newerVersion } from "../src/updatecheck";
+import { updateProfile } from "../src/ota";
 import { VERSION } from "../src/version";
 
 let dir: string;
@@ -213,5 +214,26 @@ describe("aviso de versión nueva", () => {
   test("sin red no avisa ni truena; con la misma versión tampoco avisa", async () => {
     expect(await newerVersion(1_000, broken)).toBeUndefined();
     expect(await newerVersion(1_000 + 2 * 86_400_000, reply(VERSION))).toBeUndefined();
+  });
+});
+
+describe("apron update: de qué perfil salen las variables", () => {
+  const project = (profiles: Record<string, object>) => ({ root: dir, file: join(dir, "apron.json"), config: { project: "p", profiles } });
+
+  test("el perfil de apron.json que se llama como el canal", () => {
+    file("eas.json", JSON.stringify({ build: { preview: { env: { A: "1" } } } }));
+    expect(updateProfile(project({ preview: { eas: "preview", artifact: "x" } }), "preview")).toEqual({ name: "preview", profile: { eas: "preview", artifact: "x" } });
+  });
+
+  test("si apron.json no lo tiene, el de eas.json; si nadie lo tiene, ninguno", () => {
+    file("eas.json", JSON.stringify({ build: { demo: { env: { A: "1" } } } }));
+    expect(updateProfile(project({}), "demo")).toEqual({ name: "demo", profile: { eas: "demo" } });
+    expect(updateProfile(project({}), "production")).toBeUndefined();
+  });
+
+  test("--profile manda, y si no existe es error", () => {
+    file("eas.json", JSON.stringify({ build: { demo: {} } }));
+    expect(updateProfile(project({}), "production", "demo")?.name).toBe("demo");
+    expect(() => updateProfile(project({}), "production", "nada")).toThrow("nada");
   });
 });

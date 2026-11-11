@@ -24,7 +24,7 @@ ${c.bold("Uso")}
   apron config [server <url>]   Panel por omisión y llaves guardadas
 
 ${c.bold("Opciones")}
-  --profile <p>        Perfil (upload, list, share, open latest)
+  --profile <p>        Perfil (upload, list, share, open latest; update: de dónde salen las variables)
   --notes "<texto>"    Notas del build (si no, se arman con los commits)
   --no-notes           No mandar notas
   --version <v>        Versión (si no, se lee de app.json, pubspec, Gradle, pom o package.json)

@@ -65,6 +65,11 @@ Después, cada cambio de JS: `apron update --channel preview`. Las apps de ese c
 (la versión de la app) lo bajan la próxima vez que abren. Si cambias código nativo, dependencias nativas o la
 versión, compila otro APK. Revertir: desde el panel (sección Actualizaciones OTA del proyecto).
 
+El JavaScript se exporta con las variables del perfil que se llama como el canal (o el de `--profile`), igual que
+`apron build`: las de `"env"` en `apron.json` y, con `"eas"`, las de ese perfil de `eas.json` sin leer `.env`. Si no
+hay perfil con ese nombre, también se busca en `eas.json`. Así una actualización no sale con otras `EXPO_PUBLIC_…`
+que el APK que la recibe.
+
 ### apron.json
 
 ```json
@@ -118,7 +123,7 @@ Un proyecto Expo con `eas.json` queda así:
 ### CI (GitHub Actions)
 
 ```yaml
-- run: npm install -g @byfabrii/apron@0.8.0     # versión fija: no cambia sola entre ejecuciones
+- run: npm install -g @byfabrii/apron@0.8.1     # versión fija: no cambia sola entre ejecuciones
 - run: apron build release
   env:
     APRON_URL: https://apron.tu-dominio.com
@@ -155,7 +160,7 @@ bun run check:pack           # qué llevaría el paquete de npm (y que no lleve 
 ### Publicar una versión
 
 1. Sube la versión en `src/version.ts` y `package.json`.
-2. Commit, y un tag `vX.Y.Z` con la misma versión: `git tag v0.8.0 && git push origin main v0.8.0`.
+2. Commit, y un tag `vX.Y.Z` con la misma versión: `git tag v0.8.1 && git push origin main v0.8.1`.
 3. El workflow **Publicar en npm** corre pruebas, compila, revisa el paquete (`check:pack`) y publica con
    firma de origen.
 
