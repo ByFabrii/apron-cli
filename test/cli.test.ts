@@ -10,6 +10,7 @@ import { findFiles } from "../src/glob";
 import { findProject, resolveAuth } from "../src/project";
 import { compareVersions, newerVersion } from "../src/updatecheck";
 import { updateProfile } from "../src/ota";
+import { compact, explainDiff, parseResolve } from "../src/runtime";
 import { VERSION } from "../src/version";
 
 let dir: string;
@@ -235,5 +236,29 @@ describe("apron update: de qué perfil salen las variables", () => {
     file("eas.json", JSON.stringify({ build: { demo: {} } }));
     expect(updateProfile(project({}), "production", "demo")?.name).toBe("demo");
     expect(() => updateProfile(project({}), "production", "nada")).toThrow("nada");
+  });
+});
+
+describe("huella nativa (runtime fingerprint)", () => {
+  test("lee la salida de expo-updates aunque traiga avisos antes, y compacta las fuentes", () => {
+    const out = 'aviso: algo\n{"runtimeVersion":"abc123","fingerprintSources":[{"type":"file","filePath":"eas.json","hash":"h1"},{"type":"contents","id":"expoConfig","hash":"h2"},{"type":"dir","filePath":"node_modules/x","hash":null}],"workflow":"managed"}';
+    expect(parseResolve(out)).toEqual({ runtimeVersion: "abc123", sources: [["eas.json", "h1"], ["expoConfig", "h2"]] });
+    expect(parseResolve('{"runtimeVersion":"1.0.0","fingerprintSources":null}')).toEqual({ runtimeVersion: "1.0.0", sources: undefined });
+    expect(parseResolve("Error: no hay expo-updates")).toBeUndefined();
+    expect(compact(null)).toBeUndefined();
+  });
+
+  test("explica qué cambió en lo nativo, agrupado por dependencia", () => {
+    const before: [string, string][] = [["expoConfig", "1"], ["node_modules/expo-camera/android", "a"], ["node_modules/expo-camera/ios", "b"],
+      ["node_modules/@react-native/foo/x", "c"], ["assets/icon.png", "i"]];
+    const after: [string, string][] = [["expoConfig", "2"], ["node_modules/expo-camera/android", "a2"], ["node_modules/expo-camera/ios", "b2"],
+      ["node_modules/expo-location/android", "n"], ["assets/icon.png", "i"]];
+    const lines = explainDiff(before, after);
+    expect(lines).toContain("dependencia nativa expo-camera: cambió");
+    expect(lines).toContain("dependencia nativa expo-location: nueva");
+    expect(lines).toContain("dependencia nativa @react-native/foo: ya no está");
+    expect(lines.some((l) => l.startsWith("configuración de Expo"))).toBe(true);
+    expect(lines.some((l) => l.includes("icon.png"))).toBe(false);
+    expect(explainDiff(before, before)).toEqual([]);
   });
 });

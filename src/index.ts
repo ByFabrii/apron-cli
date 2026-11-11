@@ -36,7 +36,8 @@ ${c.bold("Opciones")}
   --channel <c>        update: canal de la app (preview, production…). Por omisión: production
   --message "<texto>"  update: descripción (por omisión, el último commit)
   --platform <p>       update: android, ios o all (por omisión)
-  --runtime-version <v> update: si app.json no usa la política appVersion
+  --runtime-version <v> update: runtime a mano (por omisión lo calcula expo-updates)
+  --force              update: publicar aunque ningún dispositivo tenga un APK compatible
   --server <url>       init/login: URL del panel
   --project <slug>     init/login: identificador del proyecto
 

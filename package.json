@@ -1,6 +1,6 @@
 {
   "name": "@byfabrii/apron",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "description": "Compila, sube y comparte los builds de tus apps (APK, AAB, IPA, OTA de Expo) desde tu propio servidor Apron",
   "keywords": ["apron", "builds", "apk", "aab", "expo", "ota", "self-hosted", "cli"],
   "license": "MIT",

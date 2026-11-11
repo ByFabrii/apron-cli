@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { basename, relative, resolve } from "node:path";
-import { Api, fileSize, type BuildInfo } from "./api";
+import { basename, join, relative, resolve } from "node:path";
+import { Api, fileSize, type BuildInfo, type UploadFields } from "./api";
 import { detectVersion } from "./appversion";
 import { buildEnv, clearMetroCache } from "./buildenv";
 import { configPath, loadConfig, normalizeServer, removeCredential, saveConfig, saveCredential } from "./config";
@@ -12,6 +12,8 @@ import { autoNotes } from "./notes";
 import { findProject, requireProject, resolveAuth, resolveServer, writeProject, PROJECT_FILE, type LoadedProject, type ProjectConfig } from "./project";
 import { machineName, openUrl, terminalQr } from "./system";
 import { ask, c, fail, formatSize, info, interactive, ok, relative as ago, step, table, warn } from "./ui";
+import { expoConfig } from "./ota";
+import { resolveRuntime } from "./runtime";
 import { INSTALL, newerVersion } from "./updatecheck";
 import { VERSION } from "./version";
 
@@ -103,7 +105,8 @@ export async function whoami() {
 
 // --- upload / build ---------------------------------------------------------------------------
 
-async function uploadFile(project: LoadedProject | undefined, file: string, flags: Flags, profile?: string): Promise<BuildInfo> {
+async function uploadFile(project: LoadedProject | undefined, file: string, flags: Flags, profile?: string,
+                          ota: Partial<Pick<UploadFields, "runtimeVersion" | "otaChannel" | "fingerprint">> = {}): Promise<BuildInfo> {
   const auth = resolveAuth(project);
   const api = new Api(auth.server, auth.token);
   const root = project?.root ?? process.cwd();
@@ -122,6 +125,7 @@ async function uploadFile(project: LoadedProject | undefined, file: string, flag
     branch: git.branch(root),
     notes,
     platform: str(flags, "platform"),
+    ...ota,
   });
   ok(`Subido en ${((Date.now() - started) / 1000).toFixed(1)} s: ${c.cyan(build.url)}`);
   return build;
@@ -155,8 +159,10 @@ export async function build(args: string[], flags: Flags) {
   if (git.isDirty(project.root)) warn("Hay cambios sin commit: el commit que se registra no los incluye.");
 
   const started = Date.now();
+  let buildEnvironment: NodeJS.ProcessEnv | undefined;
   if (profile.build && !flags["skip-build"]) {
     const { env, added } = buildEnv(project.root, profile, fail);
+    buildEnvironment = env;
     if (profile.eas) {
       info(`Como el perfil ${c.bold(profile.eas)} de eas.json, sin .env`);
       info(`Caché de Metro limpio: ${c.dim(clearMetroCache())}`);
@@ -175,7 +181,35 @@ export async function build(args: string[], flags: Flags) {
   }
   ok(`Archivo: ${relative(project.root, artifact.path)} (${formatSize(artifact.size)})`);
   if (flags["no-upload"]) return;
-  await uploadFile(project, artifact.path, flags, profileName);
+  // Recién compilado desde este código: su huella es la de ahora (con --skip-build no se sabe de qué código salió).
+  const ota = buildEnvironment ? otaInfo(project.root, artifact.path, buildEnvironment) : {};
+  await uploadFile(project, artifact.path, flags, profileName, ota);
+}
+
+/**
+ * Runtime de expo-updates, canal y huella del APK que se acaba de compilar, para que el panel sepa a qué APK le
+ * llega cada actualización y apron update pueda avisar si el código ya no es compatible. Si el proyecto no usa
+ * expo-updates, nada.
+ */
+function otaInfo(root: string, file: string, env: NodeJS.ProcessEnv): Partial<UploadFields> {
+  const platform = /\.(apk|aab)$/i.test(file) ? "android" : /\.ipa$/i.test(file) ? "ios" : undefined;
+  if (!platform || !existsSync(join(root, "node_modules", "expo-updates"))) return {};
+  try {
+    const config = expoConfig(root, env);
+    if (!config.updates?.url || !config.runtimeVersion) return {};
+    const resolved = resolveRuntime(root, platform, env);
+    if (!("runtimeVersion" in resolved)) {
+      warn(`No pude calcular el runtime OTA del APK: ${resolved.error}`);
+      return {};
+    }
+    const channel = config.updates.requestHeaders?.["expo-channel-name"];
+    info(`Runtime OTA: ${resolved.runtimeVersion.slice(0, 10)}${channel ? ` · canal ${channel}` : ""}`);
+    return { runtimeVersion: resolved.runtimeVersion, otaChannel: channel,
+      fingerprint: resolved.sources ? JSON.stringify(resolved.sources) : undefined };
+  } catch (e) {
+    warn(`No pude leer la configuración OTA: ${(e as Error).message}`);
+    return {};
+  }
 }
 
 function run(command: string, cwd: string, env: NodeJS.ProcessEnv = process.env): Promise<number> {

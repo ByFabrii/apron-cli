@@ -33,6 +33,28 @@ export interface UploadFields {
   branch?: string;
   notes?: string;
   platform?: string;
+  runtimeVersion?: string;
+  otaChannel?: string;
+  fingerprint?: string;
+}
+
+export interface BuildRef {
+  id: string;
+  label: string;
+  createdAt: string;
+  runtimeVersion: string;
+}
+
+export interface OtaCompat {
+  channel: string;
+  platform: string;
+  runtimeVersion: string;
+  devices: number;
+  compatible: number;
+  runtimes: { runtimeVersion: string; devices: number; failing: number; lastSeen: string; build?: BuildRef | null }[];
+  matchingBuild?: BuildRef | null;
+  reference?: BuildRef | null;
+  referenceFingerprint?: string | null;
 }
 
 const USER_AGENT = `apron-cli/${VERSION} (${process.platform}; ${process.arch})`;
@@ -110,6 +132,15 @@ export class Api {
     }
     return this.request<{ groupId: string; channel: string; runtimeVersion: string; platforms: string[]; newBytes: number; url: string; manifestUrl: string }>(
       "POST", "/api/v1/ota/updates", form);
+  }
+
+  /** A cuántos dispositivos les llegaría una actualización con ese runtime. undefined si el panel es viejo. */
+  async otaCompat(channel: string, platform: string, runtimeVersion: string): Promise<OtaCompat | undefined> {
+    try {
+      return await this.request<OtaCompat>("GET", "/api/v1/ota/compat", undefined, { channel, platform, runtimeVersion });
+    } catch {
+      return undefined;
+    }
   }
 
   listUpdates() {

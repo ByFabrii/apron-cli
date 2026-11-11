@@ -54,16 +54,36 @@ Mandan JavaScript y assets nuevos a las apps ya instaladas, sin compilar otro AP
 (dentro de `"expo"`), y compilar un APK nuevo con `expo-updates` instalado:
 
 ```json
-"runtimeVersion": { "policy": "appVersion" },
+"runtimeVersion": { "policy": "fingerprint" },
 "updates": {
   "url": "https://apron.tu-dominio.com/ota/<proyecto>/manifest",
   "requestHeaders": { "expo-channel-name": "preview" }
 }
 ```
 
-Después, cada cambio de JS: `apron update --channel preview`. Las apps de ese canal con el mismo runtime
-(la versión de la app) lo bajan la próxima vez que abren. Si cambias código nativo, dependencias nativas o la
-versión, compila otro APK. Revertir: desde el panel (sección Actualizaciones OTA del proyecto).
+Y un `fingerprint.config.js` para que la versión de la app no cuente como cambio nativo:
+
+```js
+module.exports = { sourceSkips: ["ExpoConfigVersions", "PackageJsonAndroidAndIosScriptsIfNotContainRun"], ignorePaths: ["eas.json"] };
+```
+
+Después, cada cambio de JS: `apron update --channel preview`. Le llega a todos los APK de ese canal con la misma
+**parte nativa** (la huella), aunque la versión de la app haya subido. Revertir: desde el panel (sección
+Actualizaciones OTA del proyecto).
+
+**Si cambiaste algo nativo** (una dependencia con código nativo, un plugin, permisos, íconos), la huella cambia y los
+APK instalados ya no son compatibles. `apron build` guarda la huella de cada APK en el panel y el panel cuenta los
+dispositivos que preguntan por actualizaciones, así que `apron update` avisa antes de publicar:
+
+```
+! android: NINGUNO de los 3 dispositivo(s) del canal preview tiene un APK compatible con este código.
+  Cambió en la parte nativa desde ese APK:
+    • dependencia nativa expo-camera: nueva
+  Qué hacer: compila e instala un APK nuevo en esos dispositivos (apron build preview) y comparte el enlace.
+```
+
+y no publica (pregunta en la terminal; en CI se detiene, salvo `--force`). Si todo está bien dice a cuántos
+dispositivos les va a llegar.
 
 El JavaScript se exporta con las variables del perfil que se llama como el canal (o el de `--profile`), igual que
 `apron build`: las de `"env"` en `apron.json` y, con `"eas"`, las de ese perfil de `eas.json` sin leer `.env`. Si no
@@ -123,7 +143,7 @@ Un proyecto Expo con `eas.json` queda así:
 ### CI (GitHub Actions)
 
 ```yaml
-- run: npm install -g @byfabrii/apron@0.8.1     # versión fija: no cambia sola entre ejecuciones
+- run: npm install -g @byfabrii/apron@0.9.0     # versión fija: no cambia sola entre ejecuciones
 - run: apron build release
   env:
     APRON_URL: https://apron.tu-dominio.com
@@ -160,7 +180,7 @@ bun run check:pack           # qué llevaría el paquete de npm (y que no lleve 
 ### Publicar una versión
 
 1. Sube la versión en `src/version.ts` y `package.json`.
-2. Commit, y un tag `vX.Y.Z` con la misma versión: `git tag v0.8.1 && git push origin main v0.8.1`.
+2. Commit, y un tag `vX.Y.Z` con la misma versión: `git tag v0.9.0 && git push origin main v0.9.0`.
 3. El workflow **Publicar en npm** corre pruebas, compila, revisa el paquete (`check:pack`) y publica con
    firma de origen.
 
